@@ -1,0 +1,27 @@
+{
+  "elements":
+  [
+	{
+		"type": "List",
+		"name": "Raeume",
+		"caption": "Räume:",
+		"rowCount": 5,
+		"add": true,
+		"delete": true,
+		"sort": {
+			"column": "name",
+			"direction": "ascending"
+		},
+		"columns": [{
+			"label": "Raumname",
+			"name": "Raumname", 
+			"width": "75px",
+			"add": "",
+			"edit": {
+				"type": "ValidationTextBox"
+			}
+		}]
+	},
+	{ "type": "SelectVariable", "name": "DaysetVar", "caption": "Dayset Variable" },
+  ]
+}
