@@ -270,6 +270,9 @@ if (\$IPS_SENDER == \"WebFront\")
 			$dummyGUID = $this->GetModuleIDByName("Dummy Module");
 			$this->CreateInstance($this->dummyGUID, "Automatik", "AutomatikIns", $this->InstanceParentID, 1);
 			
+			//Create Global Automatic Switch
+			$this->CreateVariable(0, "Globale Automatik", "GlobalAutomatikVar", $this->InstanceParentID, 1, false, "~Switch", "SetValue");
+			
 			//Create Einstellungen Folder
 			if(@IPS_GetObjectIDByIdent("EinstellungenCat", $this->InstanceParentID) === false)
 			{
@@ -579,7 +582,6 @@ if (\$IPS_SENDER == \"WebFront\")
 		//Get Content of Table
 		$dataJSON = $this->ReadPropertyString("Raeume");
 		$data = json_decode($dataJSON);
-		
 		$this->InstanceParentID = IPS_GetParent($this->InstanceID);
 		$automatikIns = IPS_GetObjectIDByIdent("AutomatikIns", $this->InstanceParentID);
 		$tageszeitenIns = IPS_GetObjectIDByIdent("EinstellungenCat", $this->InstanceParentID);
@@ -616,8 +618,10 @@ if (\$IPS_SENDER == \"WebFront\")
 			$raumID = IPS_GetObjectIDByIdent("raum$id", $this->InstanceID);
 			$automatikRaumID = IPS_GetObjectIDByIdent("raum$id", $automatikIns);
 			$automatik = GetValue($automatikRaumID);
+			$automatikGlobalID = IPS_GetObjectIDByIdent("GlobalAutomatikVar", $this->InstanceParentID);
+			$automatikGlobal = GetValue($automatikGlobalID);
 			$vIdent = IPS_GetObject($sender)['ObjectIdent'];
-			if($automatik && ($sender == $daysetVar /*sender = dayset*/ || strpos($vIdent, "raum") !== false /*sender = Automatik || Tageszeiten*/))
+			if($automatikGlobal && $automatik && ($sender == $daysetVar /*sender = dayset*/ || strpos($vIdent, "raum") !== false /*sender = Automatik || Tageszeiten*/))
 			{
 				$value = GetValue($vid);
 				SetValue($raumID, $value);
