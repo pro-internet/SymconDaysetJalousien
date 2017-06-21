@@ -1,5 +1,5 @@
 <?
-class Dayset_Jalousie extends IPSModule {
+class DaysetJalousie extends IPSModule {
 
 	private $InstanceParentID;
 	private $dummyGUID;
@@ -17,6 +17,47 @@ class Dayset_Jalousie extends IPSModule {
 			}
 		}
 		return $GUID;
+	}
+	
+	protected function DeleteObject($id)
+	{
+		if(IPS_HasChildren($id))
+		{
+			$childrenIDs = IPS_GetChildrenIDs($id);
+			foreach($childrenIDs as $chid)
+			{
+				$this->DeleteObject($chid);
+			}
+			$this->DeleteObject($id);
+		}
+		else
+		{
+			$type = IPS_GetObject($id)['ObjectType'];
+			switch($type)
+			{
+				case(0 /*kategorie*/):
+					IPS_DeleteCategory($id);
+					break;
+				case(1 /*Instanz*/):
+					IPS_DeleteInstance($id);
+					break;
+				case(2 /*Variable*/):
+					IPS_DeleteVariable($id);
+					break;
+				case(3 /*Skript*/):
+					IPS_DeleteScript($id,false /*move file to "Deleted" folder*/);
+					break;
+				case(4 /*Ereignis*/):
+					IPS_DeleteEvent($id);
+					break;
+				case(5 /*Media*/):
+					IPS_DeleteMedia($id);
+					break;
+				case(6 /*Link*/):
+					IPS_DeleteLink($id);
+					break;
+			}
+		}
 	}
 	
 	protected function CreateSetValueScript($parentID)
@@ -94,7 +135,7 @@ if (\$IPS_SENDER == \"WebFront\")
 			{
 				$o = IPS_GetObject($target);
 				$name = $parentName . $o['ObjectName'] . "onchange";
-				$ident = $parentName . $o['ObjectIdent'] . "onchange";
+				$ident = $o['ObjectIdent'] . "onchange";
 				$this->CreateEvent($name, $ident, $eventsParent, 0, 1, $target, "DSJal_refresh(" . $this->InstanceID . "," . $target . ");");
 			}
 		}
@@ -223,12 +264,24 @@ if (\$IPS_SENDER == \"WebFront\")
 		if($this->InstanceParentID != 0)
 		{
 			IPS_SetIcon($this->InstanceID, "Jalousie");
+			IPS_SetName($this->InstanceID, "Jalousie");
 			
-			//Create the Dummy Modules
+			//Create Automatin Dummy Module
 			$dummyGUID = $this->GetModuleIDByName("Dummy Module");
-			$this->CreateInstance($this->dummyGUID, "Werte", "WerteIns", $this->InstanceParentID, 0);
 			$this->CreateInstance($this->dummyGUID, "Automatik", "AutomatikIns", $this->InstanceParentID, 1);
-			$this->CreateInstance($this->dummyGUID, "Tageszeiten", "TageszeitenIns", $this->InstanceParentID, 2);
+			
+			//Create Einstellungen Folder
+			if(@IPS_GetObjectIDByIdent("EinstellungenCat", $this->InstanceParentID) === false)
+			{
+				$cidEinstellungen = IPS_CreateCategory();
+				IPS_SetName($cidEinstellungen, "Einstellungen");
+				IPS_SetIdent($cidEinstellungen, "EinstellungenCat");
+				IPS_SetParent($cidEinstellungen, $this->InstanceParentID);
+			}
+			else
+			{
+				$cidEinstellungen = IPS_GetObjectIDByIdent("EinstellungenCat", $this->InstanceParentID);
+			}
 			
 			//Get Content of Table
 			$dataJSON = $this->ReadPropertyString("Raeume");
@@ -239,24 +292,29 @@ if (\$IPS_SENDER == \"WebFront\")
 			IPS_SetHidden($EventCatID, true);
 				
 			//Create Objects for "Werte"
-			$insID = IPS_GetObjectIDByIdent("WerteIns", $this->InstanceParentID);
-			$this->CreateVariable(0, "Offen", "OffenVar", $insID, 0, true, "~Switch", "SetValue");
-			$this->CreateVariable(0, "Geschlossen", "GeschlossenVar", $insID, 1, false, "~Switch", "SetValue");
-			$this->CreateInstance($this->dummyGUID, "Ausblick", "AusblickIns", $insID, 2);
-			$this->CreateVariable(1, "Behang", "AusblickBehangVar", $insID, 3, 0, "~Shutter", "SetValue");
-			$this->CreateVariable(1, "Lamellen", "AusblickLamellenVar", $insID, 4, 0, "~Shutter", "SetValue");
-			$this->CreateInstance($this->dummyGUID, "Beschattung", "BeschattungIns", $insID, 5);
-			$this->CreateVariable(1, "Behang", "BeschattungBehangVar", $insID, 6, 0, "~Shutter", "SetValue");
-			$this->CreateVariable(1, "Lamellen", "BeschattungLamellenVar", $insID, 7, 0, "~Shutter", "SetValue");
-			$this->CreateInstance($this->dummyGUID, "Sonnenschutz", "SonnenschutzIns", $insID, 8);
-			$this->CreateVariable(1, "Behang", "SonnenschutzBehangVar", $insID, 9, 0, "~Shutter", "SetValue");
-			$this->CreateVariable(1, "Lamellen", "SonnenschutzLamellenVar", $insID, 10, 0, "~Shutter", "SetValue");
+			$insID = $cidEinstellungen;
+			$idJalousie = $this->CreateInstance($this->dummyGUID, "Jalousie", "JalousieIns", $insID, 30);
+			$this->CreateVariable(0, "Auf", "OffenVar", $idJalousie, 0, true, "~Switch", "SetValue");
+			$this->CreateVariable(0, "Zu", "GeschlossenVar", $idJalousie, 1, false, "~Switch", "SetValue");
+			$idAusblick = $this->CreateInstance($this->dummyGUID, "Ausblick", "AusblickIns", $insID, 31);
+			$this->CreateVariable(1, "Behang", "AusblickBehangVar", $idAusblick, 3, 0, "~Shutter", "SetValue");
+			$this->CreateVariable(1, "Lamellen", "AusblickLamellenVar", $idAusblick, 4, 0, "~Shutter", "SetValue");
+			$idBeschattung = $this->CreateInstance($this->dummyGUID, "Beschattung", "BeschattungIns", $insID, 32);
+			$this->CreateVariable(1, "Behang", "BeschattungBehangVar", $idBeschattung, 6, 0, "~Shutter", "SetValue");
+			$this->CreateVariable(1, "Lamellen", "BeschattungLamellenVar", $idBeschattung, 7, 0, "~Shutter", "SetValue");
+			$idSonnenschutz = $this->CreateInstance($this->dummyGUID, "Sonnenschutz", "SonnenschutzIns", $insID, 33);
+			$this->CreateVariable(1, "Behang", "SonnenschutzBehangVar", $idSonnenschutz, 9, 0, "~Shutter", "SetValue");
+			$this->CreateVariable(1, "Lamellen", "SonnenschutzLamellenVar", $idSonnenschutz, 10, 0, "~Shutter", "SetValue");
 			
 			//Create onchange Events for all Variables in "Werte"
-			$this->CreateEventForChildren($insID, $EventCatID);
+			$this->CreateEventForChildren($idJalousie, $EventCatID);
+			$this->CreateEventForChildren($idAusblick, $EventCatID);
+			$this->CreateEventForChildren($idBeschattung, $EventCatID);
+			$this->CreateEventForChildren($idSonnenschutz, $EventCatID);
 			
 			//Create Objects for "Automatik"
 			$insID = IPS_GetObjectIDByIdent("AutomatikIns", $this->InstanceParentID);
+			IPS_SetPosition($insID, 2);
 			foreach($data as $id => $content)
 			{
 				$vid = $this->CreateVariable(0, $content->Raumname, "raum$id", $insID, $id, false, "~Switch", "SetValue");
@@ -265,56 +323,59 @@ if (\$IPS_SENDER == \"WebFront\")
 			}
 			
 			//Create Objects for "Tageszeiten"
-			$insID = IPS_GetObjectIDByIdent("TageszeitenIns", $this->InstanceParentID);
-			//Create Link to Dayset
-			$target = $this->ReadPropertyInteger("DaysetVar");
-			$this->CreateLink($target, "DaysetLink", $insID, -9999);
+			$insID = $cidEinstellungen;
 			
 			//Create Dayset Event
+			$target = $this->ReadPropertyInteger("DaysetVar");
 			$this->CreateEvent("Daysetonchange", "DaysetEvent", $EventCatID, 0, 1, $target, "DSJal_refresh(" . $this->InstanceID . "," . $target . ");");
 			
 				//Früh
-				$id = $this->CreateInstance($this->dummyGUID, "Früh", "FruehIns", $insID, -1);
+				$idFrueh = $this->CreateInstance($this->dummyGUID, "Früh", "FruehIns", $insID, -1);
 				//IPS_SetIcon($id, "Fog");
 				foreach($data as $id => $content)
 				{
-					$this->CreateVariable(1, $content->Raumname, "Fruehraum$id", $insID, $id, 0, "DSJal.Selector", "SetValue");
+					$this->CreateVariable(1, $content->Raumname, "Fruehraum$id", $idFrueh, $id, 0, "DSJal.Selector", "SetValue");
 				}
-				//Sonnenaufgang
-				$this->CreateInstance($this->dummyGUID, "Sonnenaufgang", "SonnenaufgangIns", $insID, count($data));
+				//Morgen
+				$idMorgen = $this->CreateInstance($this->dummyGUID, "Morgen", "SonnenaufgangIns", $insID, count($data));
 				foreach($data as $id => $content)
 				{
-					$this->CreateVariable(1, $content->Raumname, "Sonnenaufgangraum$id", $insID, $id + 1 + count($data), 0, "DSJal.Selector", "SetValue");
+					$this->CreateVariable(1, $content->Raumname, "Sonnenaufgangraum$id", $idMorgen, $id + 1 + count($data), 0, "DSJal.Selector", "SetValue");
 				}
 				//Tag
-				$id = $this->CreateInstance($this->dummyGUID, "Tag", "TagIns", $insID, count($data) * 2 + 1);
+				$idTag = $this->CreateInstance($this->dummyGUID, "Tag", "TagIns", $insID, count($data) * 2 + 1);
 				//IPS_SetIcon($id, "Sun");
 				foreach($data as $id => $content)
 				{
-					$this->CreateVariable(1, $content->Raumname, "Tagraum$id", $insID, $id + 1 + count($data) * 2 + 1, 0, "DSJal.Selector", "SetValue");
+					$this->CreateVariable(1, $content->Raumname, "Tagraum$id", $idTag, $id + 1 + count($data) * 2 + 1, 0, "DSJal.Selector", "SetValue");
 				}
 				//Dämmerung
-				$this->CreateInstance($this->dummyGUID, "Dämmerung", "DaemmerungIns", $insID, count($data) * 3 + 2);
+				$idDaemmerung = $this->CreateInstance($this->dummyGUID, "Dämmerung", "DaemmerungIns", $insID, count($data) * 3 + 2);
 				foreach($data as $id => $content)
 				{
-					$this->CreateVariable(1, $content->Raumname, "Daemmerungraum$id", $insID, $id + 1 + count($data) * 3 + 2, 0, "DSJal.Selector", "SetValue");
+					$this->CreateVariable(1, $content->Raumname, "Daemmerungraum$id", $idDaemmerung, $id + 1 + count($data) * 3 + 2, 0, "DSJal.Selector", "SetValue");
 				}
 				//Abend
-				$id = $this->CreateInstance($this->dummyGUID, "Abend", "AbendIns", $insID, count($data) * 4 + 3);
+				$idAbend = $this->CreateInstance($this->dummyGUID, "Abend", "AbendIns", $insID, count($data) * 4 + 3);
 				//IPS_SetIcon($id, "Moon");
 				foreach($data as $id => $content)
 				{
-					$this->CreateVariable(1, $content->Raumname, "Abendraum$id", $insID, $id + 1 + count($data) * 4 + 3, 0, "DSJal.Selector", "SetValue");
+					$this->CreateVariable(1, $content->Raumname, "Abendraum$id", $idAbend, $id + 1 + count($data) * 4 + 3, 0, "DSJal.Selector", "SetValue");
 				}
 				//Nacht
-				$id = $this->CreateInstance($this->dummyGUID, "Nacht", "NachtIns", $insID, count($data) * 5 + 4);
+				$idNacht = $this->CreateInstance($this->dummyGUID, "Nacht", "NachtIns", $insID, count($data) * 5 + 4);
 				//IPS_SetIcon($id, "Moon");
 				foreach($data as $id => $content)
 				{
-					$this->CreateVariable(1, $content->Raumname, "Nachtraum$id", $insID, $id + 1 + count($data) * 5 + 4, 0, "DSJal.Selector", "SetValue");
+					$this->CreateVariable(1, $content->Raumname, "Nachtraum$id", $idNacht, $id + 1 + count($data) * 5 + 4, 0, "DSJal.Selector", "SetValue");
 				}
-				$this->CreateEventForChildren($insID, $EventCatID);
-			
+				
+				//Create Events for All Tageszeiten
+				foreach(IPS_GetChildrenIDs($insID) as $tageszeit)
+				{
+					$this->CreateEventForChildren($tageszeit, $EventCatID);
+				}
+					
 			//Create Objects for "Räume"
 			$insID = $this->InstanceID;
 			foreach($data as $id => $content)
@@ -330,7 +391,7 @@ if (\$IPS_SENDER == \"WebFront\")
 			if(count($data) < count(IPS_GetChildrenIDs($insID)))
 			{
 				$children = IPS_GetChildrenIDs($insID);
-				$insID = IPS_GetObjectIDByIdent("TageszeitenIns", $this->InstanceParentID);
+				$insID = $cidEinstellungen;
 				for($i = count($data); $i < count($children); $i++)
 				{
 					$ident = IPS_GetObject($children[$i])['ObjectIdent'];
@@ -340,10 +401,26 @@ if (\$IPS_SENDER == \"WebFront\")
 					$cids = IPS_GetChildrenIDs($insID);
 					foreach($cids as $childID)
 					{
-						$TageszeitenIdent = IPS_GetObject($childID)['ObjectIdent'];
-						if(strpos($TageszeitenIdent, $ident) !== false)
-							IPS_DeleteVariable($childID);
+						$childrenIDs = IPS_GetChildrenIDs($childID);
+						foreach($childrenIDs as $room)
+						{
+							$raumIdent = IPS_GetObject($room)['ObjectIdent'];
+							if(strpos($raumIdent, $ident) !== false)
+								IPS_DeleteVariable($room);
+						}
 					}
+					//Delete unneccesary events
+					$cids = IPS_GetChildrenIDs(IPS_GetObjectIDByIdent("EventsCat", $this->InstanceParentID));
+					foreach($cids as $childrenIDs)
+					{
+						$raumIdent = IPS_GetObject($childrenIDs)['ObjectIdent'];
+						if(strpos($raumIdent, $ident) !== false)
+							IPS_DeleteEvent($childrenIDs);
+					}
+					//Delete unneccesary Targets
+					$cids = @IPS_GetObjectIDByIdent("Targets$ident", $this->InstanceID);
+					if($cids !== false)
+						$this->DeleteObject($cids);
 				}
 			}
 		}
@@ -432,7 +509,7 @@ if (\$IPS_SENDER == \"WebFront\")
 	{
 		$this->InstanceParentID = IPS_GetParent($this->InstanceID);
 		$roomVar = IPS_GetObjectIDByIdent($ident, $this->InstanceID);
-		$WerteIns = IPS_GetObjectIDByIdent("WerteIns", $this->InstanceParentID);
+		$WerteIns = IPS_GetObjectIDByIdent("EinstellungenCat", $this->InstanceParentID);
 		
 		//Get the Targets
 		$targetsCatID = IPS_GetObjectIDByIdent("Targets$ident", $this->InstanceID);
@@ -444,46 +521,51 @@ if (\$IPS_SENDER == \"WebFront\")
 		{
 			case(0 /*Offen*/):
 				//Get the Values
-				$vid = IPS_GetObjectIDByIdent("OffenVar", $WerteIns);
+				$insID = IPS_GetObjectIDByIdent("JalousieIns", $WerteIns);
+				$vid = IPS_GetObjectIDByIdent("OffenVar", $insID);
 				$value = GetValue($vid);
 				$this->Set($targetsSwi, $value);
 				break;
 			case(1 /*Geschlossen*/):
 				//Get the Values
-				$vid = IPS_GetObjectIDByIdent("GeschlossenVar", $WerteIns);
+				$insID = IPS_GetObjectIDByIdent("JalousieIns", $WerteIns);
+				$vid = IPS_GetObjectIDByIdent("GeschlossenVar", $insID);
 				$value = GetValue($vid);
 				$this->Set($targetsSwi, $value);
 				break;
 			case(2 /*Ausblick*/):
 				//Get the Values
 				//Behang
-				$vid = IPS_GetObjectIDByIdent("AusblickBehangVar", $WerteIns);
+				$insID = IPS_GetObjectIDByIdent("AusblickIns", $WerteIns);
+				$vid = IPS_GetObjectIDByIdent("AusblickBehangVar", $insID);
 				$value = GetValue($vid);
 				$this->Set($targetsJal, $value);
 				//Lamellen
-				$vid = IPS_GetObjectIDByIdent("AusblickLamellenVar", $WerteIns);
+				$vid = IPS_GetObjectIDByIdent("AusblickLamellenVar", $insID);
 				$value = GetValue($vid);
 				$this->Set($targetsLam, $value);
 				break;
 			case(3 /*Beschattung*/):
 				//Get the Values
 				//Behang
-				$vid = IPS_GetObjectIDByIdent("BeschattungBehangVar", $WerteIns);
+				$insID = IPS_GetObjectIDByIdent("BeschattungIns", $WerteIns);
+				$vid = IPS_GetObjectIDByIdent("BeschattungBehangVar", $insID);
 				$value = GetValue($vid);
 				$this->Set($targetsJal, $value);
 				//Lamellen
-				$vid = IPS_GetObjectIDByIdent("BeschattungLamellenVar", $WerteIns);
+				$vid = IPS_GetObjectIDByIdent("BeschattungLamellenVar", $insID);
 				$value = GetValue($vid);
 				$this->Set($targetsLam, $value);
 				break;
 			case(4 /*Sonnenschutz*/):
 				//Get the Values
 				//Behang
-				$vid = IPS_GetObjectIDByIdent("SonnenschutzBehangVar", $WerteIns);
+				$insID = IPS_GetObjectIDByIdent("SonnenschutzIns", $WerteIns);
+				$vid = IPS_GetObjectIDByIdent("SonnenschutzBehangVar", $insID);
 				$value = GetValue($vid);
 				$this->Set($targetsJal, $value);
 				//Lamellen
-				$vid = IPS_GetObjectIDByIdent("SonnenschutzLamellenVar", $WerteIns);
+				$vid = IPS_GetObjectIDByIdent("SonnenschutzLamellenVar", $insID);
 				$value = GetValue($vid);
 				$this->Set($targetsLam, $value);
 				break;
@@ -500,29 +582,35 @@ if (\$IPS_SENDER == \"WebFront\")
 		
 		$this->InstanceParentID = IPS_GetParent($this->InstanceID);
 		$automatikIns = IPS_GetObjectIDByIdent("AutomatikIns", $this->InstanceParentID);
-		$tageszeitenIns = IPS_GetObjectIDByIdent("TageszeitenIns", $this->InstanceParentID);
+		$tageszeitenIns = IPS_GetObjectIDByIdent("EinstellungenCat", $this->InstanceParentID);
 		$daysetVar = $this->ReadPropertyInteger("DaysetVar");
 		foreach($data as $id => $content)
 		{
 			switch(GetValue($daysetVar))
 			{
 				case(1 /*Früh*/):
-					$vid = IPS_GetObjectIDByIdent("Fruehraum$id", $tageszeitenIns);
+					$insID = IPS_GetObjectIDByIdent("FruehIns", $tageszeitenIns);
+					$vid = IPS_GetObjectIDByIdent("Fruehraum$id", $insID);
 					break;
-				case(2 /*Sonnenaufgang*/):
-					$vid = IPS_GetObjectIDByIdent("Sonnenaufgangraum$id", $tageszeitenIns);
+				case(2 /*Sonnenaufgang (Morgen) */):
+					$insID = IPS_GetObjectIDByIdent("SonnenaufgangIns", $tageszeitenIns);
+					$vid = IPS_GetObjectIDByIdent("Sonnenaufgangraum$id", $insID);
 					break;
 				case(3 /*Tag*/):
-					$vid = IPS_GetObjectIDByIdent("Tagraum$id", $tageszeitenIns);
+					$insID = IPS_GetObjectIDByIdent("TagIns", $tageszeitenIns);
+					$vid = IPS_GetObjectIDByIdent("Tagraum$id", $insID);
 					break;
 				case(4 /*Dämmerung*/):
-					$vid = IPS_GetObjectIDByIdent("Daemmerungraum$id", $tageszeitenIns);
+					$insID = IPS_GetObjectIDByIdent("DaemmerungIns", $tageszeitenIns);
+					$vid = IPS_GetObjectIDByIdent("Daemmerungraum$id", $insID);
 					break;
 				case(5 /*Abend*/):
-					$vid = IPS_GetObjectIDByIdent("Abendraum$id", $tageszeitenIns);
+					$insID = IPS_GetObjectIDByIdent("AbendIns", $tageszeitenIns);
+					$vid = IPS_GetObjectIDByIdent("Abendraum$id", $insID);
 					break;
 				case(6 /*Nacht*/):
-					$vid = IPS_GetObjectIDByIdent("Nachtraum$id", $tageszeitenIns);
+					$insID = IPS_GetObjectIDByIdent("NachtIns", $tageszeitenIns);
+					$vid = IPS_GetObjectIDByIdent("Nachtraum$id", $insID);
 					break;
 			}
 			$raumID = IPS_GetObjectIDByIdent("raum$id", $this->InstanceID);
