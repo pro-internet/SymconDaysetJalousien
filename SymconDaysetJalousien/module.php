@@ -480,7 +480,8 @@ if (\$IPS_SENDER == \"WebFront\")
 						{
 							if(@$insID != NULL)
 								$this->SetValueByDevice($insID, $value);
-							SetValue($target, $value);
+							else
+								SetValue($target, $value);
 							//Skip this device if we do not have a proper id
 							continue;
 						}
