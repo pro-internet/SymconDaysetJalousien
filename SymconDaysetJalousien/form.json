@@ -23,5 +23,6 @@
 		}]
 	},
 	{ "type": "SelectVariable", "name": "DaysetVar", "caption": "Dayset Variable" },
+	{ "type": "SelectVariable", "name": "WindVar", "caption": "Windstärke Variable" }
   ]
 }
