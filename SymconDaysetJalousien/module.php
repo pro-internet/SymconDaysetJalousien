@@ -154,14 +154,23 @@ if (\$IPS_SENDER == \"WebFront\")
 		IPS_SetVariableProfileAssociation("DSJal.Selector", 4, "Sonnenschutz", "", -1);
 	}
 	
-	protected function CreateWindProfile()
+	protected function CreateWindProfile($type)
 	{
 		if(!IPS_VariableProfileExists("DSJal.Wind"))
 			IPS_CreateVariableProfile("DSJal.Wind", 2 /* Float */);
 		IPS_SetVariableProfileIcon("DSJal.Wind", "WindSpeed");
-		IPS_SetVariableProfileValues("DSJal.Wind", 0, 200, 0.5);
-		IPS_SetVariableProfileDigits("DSJal.Wind", 1);
-		IPS_SetVariableProfileText("DSJal.Wind", "", "km/h");
+		if($type == 0 /* m/s */)
+		{
+			IPS_SetVariableProfileValues("DSJal.Wind", 0, 60, 0.5);
+			IPS_SetVariableProfileText("DSJal.Wind", "", " m/s");
+			IPS_SetVariableProfileDigits("DSJal.Wind", 2);
+		}
+		else /* km/h */
+		{
+			IPS_SetVariableProfileValues("DSJal.Wind", 0, 200, 0.5);
+			IPS_SetVariableProfileText("DSJal.Wind", "", " km/h");
+			IPS_SetVariableProfileDigits("DSJal.Wind", 1);
+		}
 	}
 	
 	protected function CreateInstance($GUID, $name, $ident, $parentID = 0, $position = 0)
@@ -251,6 +260,7 @@ if (\$IPS_SENDER == \"WebFront\")
 			$this->RegisterPropertyString("Raeume","");
 			$this->RegisterPropertyInteger("DaysetVar",0);
 			$this->RegisterPropertyInteger("WindVar",0);
+			$this->RegisterPropertyInteger("Profile",0);
 		}	
 		//Define "Räume" Module as this->InstanceID
 		IPS_SetIdent($this->InstanceID, "RaeumeIns");
@@ -258,7 +268,7 @@ if (\$IPS_SENDER == \"WebFront\")
 		
 		//Create Profiles
 		$this->CreateSelectProfile();
-		$this->CreateWindProfile();
+		$this->CreateWindProfile(0);
 	}
 
 	public function Destroy() {
@@ -275,6 +285,10 @@ if (\$IPS_SENDER == \"WebFront\")
 		
 		if($this->InstanceParentID != 0)
 		{
+			//reconfigure Wind Profile
+			$type = $this->ReadPropertyInteger("Profile");
+			$this->CreateWindProfile($type);
+			
 			IPS_SetIcon($this->InstanceID, "Jalousie");
 			IPS_SetName($this->InstanceID, "Jalousie");
 			

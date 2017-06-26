@@ -23,6 +23,11 @@
 		}]
 	},
 	{ "type": "SelectVariable", "name": "DaysetVar", "caption": "Dayset Variable" },
-	{ "type": "SelectVariable", "name": "WindVar", "caption": "Windstärke Variable" }
+	{ "type": "SelectVariable", "name": "WindVar", "caption": "Windstärke Variable" },
+	{ "type": "Select", "name": "Profile", "caption": "Profil",
+            "options": [
+                { "label": "m/s", "value": 0 },
+                { "label": "km/h", "value": 1 }
+        ]},
   ]
 }
