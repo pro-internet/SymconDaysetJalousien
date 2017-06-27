@@ -161,13 +161,13 @@ if (\$IPS_SENDER == \"WebFront\")
 		IPS_SetVariableProfileIcon("DSJal.Wind", "WindSpeed");
 		if($type == 0 /* m/s */)
 		{
-			IPS_SetVariableProfileValues("DSJal.Wind", 0, 60, 0.5);
+			IPS_SetVariableProfileValues("DSJal.Wind", 0, 60, 1);
 			IPS_SetVariableProfileText("DSJal.Wind", "", " m/s");
 			IPS_SetVariableProfileDigits("DSJal.Wind", 2);
 		}
 		else /* km/h */
 		{
-			IPS_SetVariableProfileValues("DSJal.Wind", 0, 200, 0.5);
+			IPS_SetVariableProfileValues("DSJal.Wind", 0, 200, 1);
 			IPS_SetVariableProfileText("DSJal.Wind", "", " km/h");
 			IPS_SetVariableProfileDigits("DSJal.Wind", 1);
 		}
