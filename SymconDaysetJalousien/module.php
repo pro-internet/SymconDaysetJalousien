@@ -110,6 +110,7 @@ if (\$IPS_SENDER == \"WebFront\")
 		if(@IPS_GetObjectIDByIdent($ident, $parentID) === false)
 		{
 			$eid = IPS_CreateEvent($type);
+			
 		}
 		else
 		{
@@ -264,7 +265,7 @@ if (\$IPS_SENDER == \"WebFront\")
 		}	
 		//Define "Räume" Module as this->InstanceID
 		IPS_SetIdent($this->InstanceID, "RaeumeIns");
-		IPS_SetPosition($this->InstanceID, 3);
+		IPS_SetPosition($this->InstanceID, 4);
 		
 		//Create Profiles
 		$this->CreateSelectProfile();
@@ -299,6 +300,9 @@ if (\$IPS_SENDER == \"WebFront\")
 			//Create Global Automatic Switch
 			$this->CreateVariable(0, "Globale Automatik", "GlobalAutomatikVar", $this->InstanceParentID, 1, false, "~Switch", "SetValue");
 			
+			//Create Global Rooms Selector
+			$this->CreateVariable(1, "Globale Räume", "GlobalRaeumeVar", $this->InstanceParentID, 3 /*pos*/, 0 /*init value*/, "DSJal.Selector", "SetValue");
+			
 			//Create Windstärke Limit
 			$this->CreateVariable(2, "Maximale Windstärke", "MaximaleWindstaerkeVar", $this->InstanceParentID, 0, 0, "DSJal.Wind", "SetValue");
 			
@@ -330,6 +334,10 @@ if (\$IPS_SENDER == \"WebFront\")
 			//Create Windstärke Limit Event
 			$vid = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $this->InstanceParentID);
 			$eid = $this->CreateEvent("MaximaleWindstaerke" . "onchange", "MaximaleWindstaerke" . "onchange", $EventCatID, 0, 1, $vid, "DSJal_refresh(". $this->InstanceID . "," . $vid . ");");
+				
+			//Create Global Räume Event
+			$vid = IPS_GetObjectIDByIdent("GlobalRaeumeVar", $this->InstanceParentID);
+			$eid = $this->CreateEvent("GlobalRäume" . "onchange", "GlobalRaeume" . "onchange", $EventCatID, 0, 0, $vid, "DSJal_refresh(". $this->InstanceID . "," . $vid . ");");
 				
 			//Create Objects for "Werte"
 			$insID = $cidEinstellungen;
@@ -662,7 +670,7 @@ if (\$IPS_SENDER == \"WebFront\")
 			//if the Velocity of the Wind is too highlight_file
 			$WindVar = $this->ReadPropertyInteger("WindVar");
 			$WindLimitVar = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $this->InstanceParentID);
-			if($sender == $WindVar || $sender == $WindLimitVar)
+			if($sender == $WindVar || $sender == $WindLimitVar) //if sender = Wind
 			{
 				$WindLimitValue = GetValue($WindLimitVar);
 				$WindValue = GetValue($WindVar);
@@ -671,6 +679,12 @@ if (\$IPS_SENDER == \"WebFront\")
 					SetValue($automatikGlobalID, false); //turn off Automation
 					SetValue($raumID, 0); //Open All Jalousien
 				}
+			}
+			$globRaumVar = IPS_GetObjectIDByIdent("GlobalRaeumeVar", $this->InstanceParentID);
+			if($sender == $globRaumVar) //if sender = global räume
+			{
+				$globRaumValue = GetValue($globRaumVar);
+				SetValue($raumID, $globRaumValue);
 			}
 			if($automatikGlobal && $automatik && ($sender == $daysetVar /*sender = dayset*/ || strpos($vIdent, "raum") !== false /*sender = Automatik || Tageszeiten*/))
 			{
