@@ -165,10 +165,16 @@ if (\$IPS_SENDER == \"WebFront\")
 			IPS_SetVariableProfileText("DSJal.Wind", "", " m/s");
 			IPS_SetVariableProfileDigits("DSJal.Wind", 2);
 		}
-		else /* km/h */
+		else if($type == 1 /* km/h */) 
 		{
 			IPS_SetVariableProfileValues("DSJal.Wind", 0, 200, 0.5);
 			IPS_SetVariableProfileText("DSJal.Wind", "", " km/h");
+			IPS_SetVariableProfileDigits("DSJal.Wind", 1);
+		}
+		else /* knoten */
+		{
+			IPS_SetVariableProfileValues("DSJal.Wind", 0, 100, 0.5);
+			IPS_SetVariableProfileText("DSJal.Wind", "", " knoten");
 			IPS_SetVariableProfileDigits("DSJal.Wind", 1);
 		}
 	}

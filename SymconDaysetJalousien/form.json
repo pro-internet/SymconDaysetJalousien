@@ -27,7 +27,8 @@
 	{ "type": "Select", "name": "Profile", "caption": "Profil",
             "options": [
                 { "label": "m/s", "value": 0 },
-                { "label": "km/h", "value": 1 }
+                { "label": "km/h", "value": 1 },
+                { "label": "knoten", "value": 2 }
         ]},
   ]
 }
