@@ -110,7 +110,6 @@ if (\$IPS_SENDER == \"WebFront\")
 		if(@IPS_GetObjectIDByIdent($ident, $parentID) === false)
 		{
 			$eid = IPS_CreateEvent($type);
-			
 		}
 		else
 		{
@@ -162,13 +161,13 @@ if (\$IPS_SENDER == \"WebFront\")
 		IPS_SetVariableProfileIcon("DSJal.Wind", "WindSpeed");
 		if($type == 0 /* m/s */)
 		{
-			IPS_SetVariableProfileValues("DSJal.Wind", 0, 60, 1);
+			IPS_SetVariableProfileValues("DSJal.Wind", 0, 60, 0.5);
 			IPS_SetVariableProfileText("DSJal.Wind", "", " m/s");
 			IPS_SetVariableProfileDigits("DSJal.Wind", 2);
 		}
 		else /* km/h */
 		{
-			IPS_SetVariableProfileValues("DSJal.Wind", 0, 200, 1);
+			IPS_SetVariableProfileValues("DSJal.Wind", 0, 200, 0.5);
 			IPS_SetVariableProfileText("DSJal.Wind", "", " km/h");
 			IPS_SetVariableProfileDigits("DSJal.Wind", 1);
 		}
@@ -265,7 +264,7 @@ if (\$IPS_SENDER == \"WebFront\")
 		}	
 		//Define "Räume" Module as this->InstanceID
 		IPS_SetIdent($this->InstanceID, "RaeumeIns");
-		IPS_SetPosition($this->InstanceID, 4);
+		IPS_SetPosition($this->InstanceID, 3);
 		
 		//Create Profiles
 		$this->CreateSelectProfile();
@@ -300,9 +299,6 @@ if (\$IPS_SENDER == \"WebFront\")
 			//Create Global Automatic Switch
 			$this->CreateVariable(0, "Globale Automatik", "GlobalAutomatikVar", $this->InstanceParentID, 1, false, "~Switch", "SetValue");
 			
-			//Create Global Rooms Selector
-			$this->CreateVariable(1, "Globale Räume", "GlobalRaeumeVar", $this->InstanceParentID, 3 /*pos*/, 0 /*init value*/, "DSJal.Selector", "SetValue");
-			
 			//Create Windstärke Limit
 			$this->CreateVariable(2, "Maximale Windstärke", "MaximaleWindstaerkeVar", $this->InstanceParentID, 0, 0, "DSJal.Wind", "SetValue");
 			
@@ -334,10 +330,6 @@ if (\$IPS_SENDER == \"WebFront\")
 			//Create Windstärke Limit Event
 			$vid = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $this->InstanceParentID);
 			$eid = $this->CreateEvent("MaximaleWindstaerke" . "onchange", "MaximaleWindstaerke" . "onchange", $EventCatID, 0, 1, $vid, "DSJal_refresh(". $this->InstanceID . "," . $vid . ");");
-				
-			//Create Global Räume Event
-			$vid = IPS_GetObjectIDByIdent("GlobalRaeumeVar", $this->InstanceParentID);
-			$eid = $this->CreateEvent("GlobalRäume" . "onchange", "GlobalRaeume" . "onchange", $EventCatID, 0, 0, $vid, "DSJal_refresh(". $this->InstanceID . "," . $vid . ");");
 				
 			//Create Objects for "Werte"
 			$insID = $cidEinstellungen;
@@ -432,6 +424,7 @@ if (\$IPS_SENDER == \"WebFront\")
 				$this->CreateCategory("Jalousie", "Jalousie", $catID, 0);
 				$this->CreateCategory("Lamellen", "Lamellen", $catID, 1);
 				$this->CreateCategory("Switch", "Switch", $catID, 2);
+				$this->CreateCategory("Step/Stop", "StepStop", $catID, 3);
 				$vid = $this->CreateVariable(1, $content->Raumname, "raum$id", $insID, $id, 0, "DSJal.Selector", "SetValue");
 				$this->CreateEvent($content->Raumname . "OnChange", "raum$id" . "onchange", $EventCatID, 0, 0, $vid, "DSJal_SetValue(" . $this->InstanceID . "," . "\"raum$id\");");
 			}
@@ -486,8 +479,33 @@ if (\$IPS_SENDER == \"WebFront\")
 		}
 	}
 	
+	private function stopAktor($targetFolder)
+	{
+		$allTargetsFolder = IPS_GetParent($targetFolder);
+		$stepStopFolder = IPS_GetObjectIDByIdent("StepStop", $allTargetsFolder);
+		$stepStopLink = IPS_GetChildrenIDs($stepStopFolder)[0];
+		$stepStopID = IPS_GetLink($stepStopLink)['TargetID'];
+		if(IPS_HasChildren($stepStopID))
+		{
+			$stepStopID = IPS_GetChildrenIDs($stepStopID)[0];
+		}
+		$currentValue = GetValue($stepStopID);
+		if($currentValue == true)
+			$nextValue = false;
+		else
+			$nextValue = true;
+		print_r($nextValue);
+		$this->Set("$stepStopFolder" . 'StepStop' , $nextValue);
+	}
+
 	private function Set($targetFolder, $value)
 	{
+		$stepStop = false;
+		if(strpos($targetFolder, "StepStop"))
+		{
+			$stepStop = true;
+			$targetFolder = str_replace("StepStop", "", $targetFolder);
+		}
 		$targets = IPS_GetChildrenIDs($targetFolder);
 		foreach($targets as $target) 
 		{
@@ -515,6 +533,10 @@ if (\$IPS_SENDER == \"WebFront\")
 					
 					if($switchValue)
 					{
+						//Stop the current Action of the Actor
+						if($stepStop == false)
+							$this->stopAktor($targetFolder);
+
 						if($v['VariableCustomAction'] > 0)
 							$actionID = $v['VariableCustomAction'];
 						else
@@ -568,6 +590,7 @@ if (\$IPS_SENDER == \"WebFront\")
 		
 		switch(GetValue($roomVar))
 		{
+			//CARE Set( xxx . "StepStop") to prevent double reset of the aktor
 			case(0 /*Offen*/):
 				//Get the Values
 				$insID = IPS_GetObjectIDByIdent("JalousieIns", $WerteIns);
@@ -592,7 +615,7 @@ if (\$IPS_SENDER == \"WebFront\")
 				//Lamellen
 				$vid = IPS_GetObjectIDByIdent("AusblickLamellenVar", $insID);
 				$value = GetValue($vid);
-				$this->Set($targetsLam, $value);
+				$this->Set("$targetsLam" . "StepStop", $value);
 				break;
 			case(3 /*Beschattung*/):
 				//Get the Values
@@ -604,7 +627,7 @@ if (\$IPS_SENDER == \"WebFront\")
 				//Lamellen
 				$vid = IPS_GetObjectIDByIdent("BeschattungLamellenVar", $insID);
 				$value = GetValue($vid);
-				$this->Set($targetsLam, $value);
+				$this->Set("$targetsLam" . "StepStop", $value);
 				break;
 			case(4 /*Sonnenschutz*/):
 				//Get the Values
@@ -616,7 +639,7 @@ if (\$IPS_SENDER == \"WebFront\")
 				//Lamellen
 				$vid = IPS_GetObjectIDByIdent("SonnenschutzLamellenVar", $insID);
 				$value = GetValue($vid);
-				$this->Set($targetsLam, $value);
+				$this->Set("$targetsLam" . "StepStop", $value);
 				break;
 			default:
 				echo "index not found: " . GetValue($roomVar);
@@ -666,11 +689,11 @@ if (\$IPS_SENDER == \"WebFront\")
 			$automatik = GetValue($automatikRaumID);
 			$automatikGlobalID = IPS_GetObjectIDByIdent("GlobalAutomatikVar", $this->InstanceParentID);
 			$automatikGlobal = GetValue($automatikGlobalID);
-			$vIdent = IPS_GetObject($sender)['ObjectIdent'];
+			$vIdent = @IPS_GetObject($sender)['ObjectIdent'];
 			//if the Velocity of the Wind is too highlight_file
 			$WindVar = $this->ReadPropertyInteger("WindVar");
 			$WindLimitVar = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $this->InstanceParentID);
-			if($sender == $WindVar || $sender == $WindLimitVar) //if sender = Wind
+			if($sender == $WindVar || $sender == $WindLimitVar)
 			{
 				$WindLimitValue = GetValue($WindLimitVar);
 				$WindValue = GetValue($WindVar);
@@ -680,12 +703,6 @@ if (\$IPS_SENDER == \"WebFront\")
 					SetValue($raumID, 0); //Open All Jalousien
 				}
 			}
-			$globRaumVar = IPS_GetObjectIDByIdent("GlobalRaeumeVar", $this->InstanceParentID);
-			if($sender == $globRaumVar) //if sender = global räume
-			{
-				$globRaumValue = GetValue($globRaumVar);
-				SetValue($raumID, $globRaumValue);
-			}
 			if($automatikGlobal && $automatik && ($sender == $daysetVar /*sender = dayset*/ || strpos($vIdent, "raum") !== false /*sender = Automatik || Tageszeiten*/))
 			{
 				$value = GetValue($vid);
@@ -693,7 +710,7 @@ if (\$IPS_SENDER == \"WebFront\")
 			}
 			else
 			{
-				$o = IPS_GetObject($sender);
+				$o = @IPS_GetObject($sender);
 				$i = $o['ObjectIdent'];
 				if(strpos($i, "Offen") !== false)
 				{
