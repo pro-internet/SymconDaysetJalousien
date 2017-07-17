@@ -303,10 +303,10 @@ if (\$IPS_SENDER == \"WebFront\")
 			$this->CreateInstance($this->dummyGUID, "Automatik", "AutomatikIns", $this->InstanceParentID, 1);
 			
 			//Create Global Automatic Switch
-			$this->CreateVariable(0, "Globale Automatik", "GlobalAutomatikVar", $this->InstanceParentID, 1, false, "~Switch", "SetValue");
+			$this->CreateVariable(0, "Globale Automatik", "GlobalAutomatikVar", $this->InstanceParentID, 0, false, "~Switch", "SetValue");
 			
 			//Create Windstärke Limit
-			$this->CreateVariable(2, "Maximale Windstärke", "MaximaleWindstaerkeVar", $this->InstanceParentID, 0, 0, "DSJal.Wind", "SetValue");
+			$this->CreateVariable(2, "Maximale Windstärke", "MaximaleWindstaerkeVar", $this->InstanceParentID, -1, 0, "DSJal.Wind", "SetValue");
 			
 			//Create Einstellungen Folder
 			if(@IPS_GetObjectIDByIdent("EinstellungenCat", $this->InstanceParentID) === false)
@@ -421,7 +421,12 @@ if (\$IPS_SENDER == \"WebFront\")
 				{
 					$this->CreateEventForChildren($tageszeit, $EventCatID);
 				}
-					
+			//Global Räume Selector		
+			$vid = $this->CreateVariable(1, "Globale Räume" , "GlobalRaeume", $this->InstanceParentID, 1 /*pos*/, 0 /*init Value*/, "DSJal.Selector", "SetValue");
+			//Global Räume Event	
+			$eid = $this->CreateEvent("GlobRäume" . "OnChange", "GlobalRaeume" . "onchange", $EventCatID, 0, 0, $vid, "DSJal_refresh(" . $this->InstanceID . "," . $vid . ");");
+			
+			
 			//Create Objects for "Räume"
 			$insID = $this->InstanceID;
 			foreach($data as $id => $content)
@@ -654,6 +659,7 @@ if (\$IPS_SENDER == \"WebFront\")
 	
 	public function refresh($sender)
 	{
+		
 		//Get Content of Table
 		$dataJSON = $this->ReadPropertyString("Raeume");
 		$data = json_decode($dataJSON);
@@ -661,84 +667,96 @@ if (\$IPS_SENDER == \"WebFront\")
 		$automatikIns = IPS_GetObjectIDByIdent("AutomatikIns", $this->InstanceParentID);
 		$tageszeitenIns = IPS_GetObjectIDByIdent("EinstellungenCat", $this->InstanceParentID);
 		$daysetVar = $this->ReadPropertyInteger("DaysetVar");
-		foreach($data as $id => $content)
+		$senderIdent = @IPS_GetObject($sender)['ObjectIdent'];
+		if($senderIdent != "GlobalRaeume")
 		{
-			switch(GetValue($daysetVar))
+			foreach($data as $id => $content)
 			{
-				case(1 /*Früh*/):
-					$insID = IPS_GetObjectIDByIdent("FruehIns", $tageszeitenIns);
-					$vid = IPS_GetObjectIDByIdent("Fruehraum$id", $insID);
-					break;
-				case(2 /*Sonnenaufgang (Morgen) */):
-					$insID = IPS_GetObjectIDByIdent("SonnenaufgangIns", $tageszeitenIns);
-					$vid = IPS_GetObjectIDByIdent("Sonnenaufgangraum$id", $insID);
-					break;
-				case(3 /*Tag*/):
-					$insID = IPS_GetObjectIDByIdent("TagIns", $tageszeitenIns);
-					$vid = IPS_GetObjectIDByIdent("Tagraum$id", $insID);
-					break;
-				case(4 /*Dämmerung*/):
-					$insID = IPS_GetObjectIDByIdent("DaemmerungIns", $tageszeitenIns);
-					$vid = IPS_GetObjectIDByIdent("Daemmerungraum$id", $insID);
-					break;
-				case(5 /*Abend*/):
-					$insID = IPS_GetObjectIDByIdent("AbendIns", $tageszeitenIns);
-					$vid = IPS_GetObjectIDByIdent("Abendraum$id", $insID);
-					break;
-				case(6 /*Nacht*/):
-					$insID = IPS_GetObjectIDByIdent("NachtIns", $tageszeitenIns);
-					$vid = IPS_GetObjectIDByIdent("Nachtraum$id", $insID);
-					break;
-			}
-			$raumID = IPS_GetObjectIDByIdent("raum$id", $this->InstanceID);
-			$automatikRaumID = IPS_GetObjectIDByIdent("raum$id", $automatikIns);
-			$automatik = GetValue($automatikRaumID);
-			$automatikGlobalID = IPS_GetObjectIDByIdent("GlobalAutomatikVar", $this->InstanceParentID);
-			$automatikGlobal = GetValue($automatikGlobalID);
-			$vIdent = @IPS_GetObject($sender)['ObjectIdent'];
-			//if the Velocity of the Wind is too highlight_file
-			$WindVar = $this->ReadPropertyInteger("WindVar");
-			$WindLimitVar = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $this->InstanceParentID);
-			if($sender == $WindVar || $sender == $WindLimitVar)
-			{
-				$WindLimitValue = GetValue($WindLimitVar);
-				$WindValue = GetValue($WindVar);
-				if($WindLimitValue < $WindValue)
+				switch(GetValue($daysetVar))
 				{
-					SetValue($automatikGlobalID, false); //turn off Automation
-					SetValue($raumID, 0); //Open All Jalousien
+					case(1 /*Früh*/):
+						$insID = IPS_GetObjectIDByIdent("FruehIns", $tageszeitenIns);
+						$vid = IPS_GetObjectIDByIdent("Fruehraum$id", $insID);
+						break;
+					case(2 /*Sonnenaufgang (Morgen) */):
+						$insID = IPS_GetObjectIDByIdent("SonnenaufgangIns", $tageszeitenIns);
+						$vid = IPS_GetObjectIDByIdent("Sonnenaufgangraum$id", $insID);
+						break;
+					case(3 /*Tag*/):
+						$insID = IPS_GetObjectIDByIdent("TagIns", $tageszeitenIns);
+						$vid = IPS_GetObjectIDByIdent("Tagraum$id", $insID);
+						break;
+					case(4 /*Dämmerung*/):
+						$insID = IPS_GetObjectIDByIdent("DaemmerungIns", $tageszeitenIns);
+						$vid = IPS_GetObjectIDByIdent("Daemmerungraum$id", $insID);
+						break;
+					case(5 /*Abend*/):
+						$insID = IPS_GetObjectIDByIdent("AbendIns", $tageszeitenIns);
+						$vid = IPS_GetObjectIDByIdent("Abendraum$id", $insID);
+						break;
+					case(6 /*Nacht*/):
+						$insID = IPS_GetObjectIDByIdent("NachtIns", $tageszeitenIns);
+						$vid = IPS_GetObjectIDByIdent("Nachtraum$id", $insID);
+						break;
+				}
+				$raumID = IPS_GetObjectIDByIdent("raum$id", $this->InstanceID);
+				$automatikRaumID = IPS_GetObjectIDByIdent("raum$id", $automatikIns);
+				$automatik = GetValue($automatikRaumID);
+				$automatikGlobalID = IPS_GetObjectIDByIdent("GlobalAutomatikVar", $this->InstanceParentID);
+				$automatikGlobal = GetValue($automatikGlobalID);
+				$vIdent = @IPS_GetObject($sender)['ObjectIdent'];
+				//if the Velocity of the Wind is too highlight_file
+				$WindVar = $this->ReadPropertyInteger("WindVar");
+				$WindLimitVar = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $this->InstanceParentID);
+				if($sender == $WindVar || $sender == $WindLimitVar)
+				{
+					$WindLimitValue = GetValue($WindLimitVar);
+					$WindValue = GetValue($WindVar);
+					if($WindLimitValue < $WindValue)
+					{
+						SetValue($automatikGlobalID, false); //turn off Automation
+						SetValue($raumID, 0); //Open All Jalousien
+					}
+				}
+				if($automatikGlobal && $automatik && ($sender == $daysetVar /*sender = dayset*/ || strpos($vIdent, "raum") !== false /*sender = Automatik || Tageszeiten*/))
+				{
+					$value = GetValue($vid);
+					SetValue($raumID, $value);
+				}
+				else
+				{
+					$o = @IPS_GetObject($sender);
+					$i = $o['ObjectIdent'];
+					if(strpos($i, "Offen") !== false)
+					{
+						if(GetValue($raumID) == 0)
+							SetValue($raumID, 0);
+					} else if(strpos($i, "Geschlossen") !== false)
+					{
+						if(GetValue($raumID) == 1)
+							SetValue($raumID, 1);
+					} else if(strpos($i, "Ausblick") !== false)
+					{
+						if(GetValue($raumID) == 2)
+							SetValue($raumID, 2);
+					} else if(strpos($i, "Beschattung") !== false)
+					{
+						if(GetValue($raumID) == 3)
+							SetValue($raumID, 3);
+					} else if(strpos($i, "Sonnenschutz") !== false)
+					{
+						if(GetValue($raumID) == 4)
+							SetValue($raumID, 4);
+					}
 				}
 			}
-			if($automatikGlobal && $automatik && ($sender == $daysetVar /*sender = dayset*/ || strpos($vIdent, "raum") !== false /*sender = Automatik || Tageszeiten*/))
+		} else //sender = Global Rooms Selector var
+		{
+			foreach($data as $id => $content)
 			{
-				$value = GetValue($vid);
-				SetValue($raumID, $value);
-			}
-			else
-			{
-				$o = @IPS_GetObject($sender);
-				$i = $o['ObjectIdent'];
-				if(strpos($i, "Offen") !== false)
-				{
-					if(GetValue($raumID) == 0)
-						SetValue($raumID, 0);
-				} else if(strpos($i, "Geschlossen") !== false)
-				{
-					if(GetValue($raumID) == 1)
-						SetValue($raumID, 1);
-				} else if(strpos($i, "Ausblick") !== false)
-				{
-					if(GetValue($raumID) == 2)
-						SetValue($raumID, 2);
-				} else if(strpos($i, "Beschattung") !== false)
-				{
-					if(GetValue($raumID) == 3)
-						SetValue($raumID, 3);
-				} else if(strpos($i, "Sonnenschutz") !== false)
-				{
-					if(GetValue($raumID) == 4)
-						SetValue($raumID, 4);
-				}
+				$vid = IPS_GetObjectIDByIdent("raum$id", $this->InstanceID);
+				$value = GetValue($sender);
+				SetValue($vid, $value);
 			}
 		}
 	}
