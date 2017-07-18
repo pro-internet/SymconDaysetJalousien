@@ -320,7 +320,8 @@ if (\$IPS_SENDER == \"WebFront\")
 				IPS_DeleteVariable($vid);
 			}
 			//Create Windstärke Limit
-			$this->CreateVariable(2, "Maximale Windstärke", "MaximaleWindstaerkeVar", $globalIns, -1, 0, "DSJal.Wind", "SetValue");
+			$windProfileMaxValue = IPS_GetVariableProfile("DSJal.Wind")['MaxValue'];
+			$this->CreateVariable(2, "Maximale Windstärke", "MaximaleWindstaerkeVar", $globalIns, -1, $windProfileMaxValue, "DSJal.Wind", "SetValue");
 			
 			//Create Einstellungen Folder
 			if(@IPS_GetObjectIDByIdent("EinstellungenCat", $this->InstanceParentID) === false)
