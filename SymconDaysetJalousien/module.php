@@ -237,6 +237,62 @@ if (\$IPS_SENDER == \"WebFront\")
 		{
 			$catID = IPS_GetObjectIDByIdent($ident, $parentID);
 		}
+		//fix mixing up the targets
+		if(IPS_GetObject($catID)['ObjectName'] != $name)
+		{
+			//determine if some room got deleted or added - if deleted and rearrange is needed
+			if(strpos($ident, "raum") !== false)
+			{
+				$dataJSON = $this->ReadPropertyString("Raeume");
+				$data = json_decode($dataJSON);
+				$automatikIns = IPS_GetObjectIDByIdent("AutomatikIns", $this->InstanceParentID);
+				if(count(IPS_GetChildrenIDs($automatikIns)) > count($data))
+				{
+					$roomNum = str_replace("Targetsraum","",$ident);
+					$nextRoomIdent = "Targetsraum" . ($roomNum + 1);
+					$currentTargetsFolder = IPS_GetObjectIDByIdent("$ident", $this->InstanceID);
+					$nextTargetsFolder = IPS_GetObjectIDByIdent("$nextRoomIdent", $this->InstanceID);
+					$currentArr = array("Jal" => IPS_GetObjectIDByIdent("Jalousie", $currentTargetsFolder),
+										"Lam" => IPS_GetObjectIDByIdent("Lamellen", $currentTargetsFolder),
+										"Swi" => IPS_GetObjectIDByIdent("Switch", $currentTargetsFolder),
+										"StepStop" => IPS_GetObjectIDByIdent("StepStop", $currentTargetsFolder)
+										);
+					$nextArr = array("Jal" => IPS_GetObjectIDByIdent("Jalousie", $nextTargetsFolder),
+										"Lam" => IPS_GetObjectIDByIdent("Lamellen", $nextTargetsFolder),
+										"Swi" => IPS_GetObjectIDByIdent("Switch", $nextTargetsFolder),
+										"StepStop" => IPS_GetObjectIDByIdent("StepStop", $nextTargetsFolder)
+										);
+					foreach($currentArr as $id => $value)
+					{
+						$currentLinks = IPS_GetChildrenIDs($value);
+						$nextLinks = IPS_GetChildrenIDs($nextArr[$id]);
+						foreach($currentLinks as $cnt => $link)
+						{
+							if(array_key_exists($cnt, $nextLinks))
+							{ /* Change the Targets of the current Links to the new Links */
+								$target = IPS_GetLink($nextLinks[$cnt])['TargetID'];
+								$linkname = IPS_GetName($nextLinks[$cnt]);
+								IPS_SetLinkTargetID($link, $target);
+								IPS_SetName($link, $linkname);
+							}
+							else //if the current folder has more links than next folder
+							{
+									IPS_DeleteLink($link);
+							}
+						}
+						if(count($currentLinks) < count($nextLinks)) //if the next folder has more links than previous folder
+						{
+							for($i = count($currentLinks); $i < count($nextLinks); $i++)
+							{
+								$linkident = IPS_GetObject($nextLinks[$i])['ObjectIdent'];
+								$target = IPs_GetLink($nextLinks[$i])['TargetID'];
+								$this->CreateLink($target, $linkident, $value, 0 /*pos*/);
+							}
+						}
+					}
+				}
+			}				
+		}
 		IPS_SetName($catID, $name);
 		IPS_SetIdent($catID, $ident);
 		if($parentID == 0)
