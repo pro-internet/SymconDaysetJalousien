@@ -6,7 +6,6 @@ class DaysetJalousie extends IPSModule {
 	
 	protected function GetModuleIDByName($name)
 	{
-		
 		$moduleList = IPS_GetModuleList();
 		$GUID = ""; //init
 		foreach($moduleList as $l)
