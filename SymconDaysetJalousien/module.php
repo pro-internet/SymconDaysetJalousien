@@ -204,7 +204,7 @@ if (\$IPS_SENDER == \"WebFront\")
 		if(@IPS_GetObjectIDByIdent($ident, $parentID) === false)
 		{
 			$varID = IPS_CreateVariable($type);
-			if($initVal != 0)
+			if($initVal != 0) //dont set value for 0
 				SetValue($varID, $initVal);
 		}
 		else
