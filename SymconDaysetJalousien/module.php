@@ -302,11 +302,24 @@ if (\$IPS_SENDER == \"WebFront\")
 			$dummyGUID = $this->GetModuleIDByName("Dummy Module");
 			$this->CreateInstance($this->dummyGUID, "Automatik", "AutomatikIns", $this->InstanceParentID, 1);
 			
-			//Create Global Automatic Switch
-			$this->CreateVariable(0, "Globale Automatik", "GlobalAutomatikVar", $this->InstanceParentID, 0, false, "~Switch", "SetValue");
+			//Create Global Dummy Instance
+			$globalIns = $this->CreateInstance($this->dummyGUID, "Global", "GlobalIns", $this->InstanceParentID, 1);
 			
+			if(@IPS_GetObjectIDByIdent("GlobalAutomatikVar", $this->InstanceParentID) !== false)
+			{
+				$vid = IPS_GetObjectIDByIdent("GlobalAutomatikVar", $this->InstanceParentID);
+				IPS_DeleteVariable($vid);
+			}
+			//Create Global Automatic Switch
+			$this->CreateVariable(0, "Globale Automatik", "GlobalAutomatikVar", $globalIns, 0, false, "~Switch", "SetValue");
+			
+			if(@IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $this->InstanceParentID) !== false)
+			{
+				$vid = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $this->InstanceParentID);
+				IPS_DeleteVariable($vid);
+			}
 			//Create Windstärke Limit
-			$this->CreateVariable(2, "Maximale Windstärke", "MaximaleWindstaerkeVar", $this->InstanceParentID, -1, 0, "DSJal.Wind", "SetValue");
+			$this->CreateVariable(2, "Maximale Windstärke", "MaximaleWindstaerkeVar", $globalIns, -1, 0, "DSJal.Wind", "SetValue");
 			
 			//Create Einstellungen Folder
 			if(@IPS_GetObjectIDByIdent("EinstellungenCat", $this->InstanceParentID) === false)
@@ -334,7 +347,8 @@ if (\$IPS_SENDER == \"WebFront\")
 			$eid = $this->CreateEvent("Windstaerke" . "onchange", "Windstaerke" . "onchange", $EventCatID, 0, 1, $vid, "DSJal_refresh(". $this->InstanceID . "," . $vid . ");");
 				
 			//Create Windstärke Limit Event
-			$vid = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $this->InstanceParentID);
+			$globalIns = IPS_GetObjectIDByIdent("GlobalIns", $this->InstanceParentID);
+			$vid = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $globalIns);
 			$eid = $this->CreateEvent("MaximaleWindstaerke" . "onchange", "MaximaleWindstaerke" . "onchange", $EventCatID, 0, 1, $vid, "DSJal_refresh(". $this->InstanceID . "," . $vid . ");");
 				
 			//Create Objects for "Werte"
@@ -421,8 +435,14 @@ if (\$IPS_SENDER == \"WebFront\")
 				{
 					$this->CreateEventForChildren($tageszeit, $EventCatID);
 				}
+				
+			if(@IPS_GetObjectIDByIdent("GlobalRaeume", $this->InstanceParentID) !== false)
+			{
+				$vid = IPS_GetObjectIDByIdent("GlobalRaeume", $this->InstanceParentID);
+				IPS_DeleteVariable($vid);
+			}
 			//Global Räume Selector		
-			$vid = $this->CreateVariable(1, "Globale Räume" , "GlobalRaeume", $this->InstanceParentID, 1 /*pos*/, 0 /*init Value*/, "DSJal.Selector", "SetValue");
+			$vid = $this->CreateVariable(1, "Globale Räume" , "GlobalRaeume", $globalIns, 1 /*pos*/, 0 /*init Value*/, "DSJal.Selector", "SetValue");
 			//Global Räume Event	
 			$eid = $this->CreateEvent("GlobRäume" . "OnChange", "GlobalRaeume" . "onchange", $EventCatID, 0, 0, $vid, "DSJal_refresh(" . $this->InstanceID . "," . $vid . ");");
 			
@@ -702,12 +722,14 @@ if (\$IPS_SENDER == \"WebFront\")
 				$raumID = IPS_GetObjectIDByIdent("raum$id", $this->InstanceID);
 				$automatikRaumID = IPS_GetObjectIDByIdent("raum$id", $automatikIns);
 				$automatik = GetValue($automatikRaumID);
-				$automatikGlobalID = IPS_GetObjectIDByIdent("GlobalAutomatikVar", $this->InstanceParentID);
+				$globalIns = IPS_GetObjectIDByIdent("GlobalIns", $this->InstanceParentID);
+				$automatikGlobalID = IPS_GetObjectIDByIdent("GlobalAutomatikVar", $globalIns);
 				$automatikGlobal = GetValue($automatikGlobalID);
 				$vIdent = @IPS_GetObject($sender)['ObjectIdent'];
 				//if the Velocity of the Wind is too highlight_file
 				$WindVar = $this->ReadPropertyInteger("WindVar");
-				$WindLimitVar = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $this->InstanceParentID);
+				$globalIns = IPS_GetObjectIDByIdent("GlobalIns", $this->InstanceParentID);
+				$WindLimitVar = IPS_GetObjectIDByIdent("MaximaleWindstaerkeVar", $globalIns);
 				if($sender == $WindVar || $sender == $WindLimitVar)
 				{
 					$WindLimitValue = GetValue($WindLimitVar);
