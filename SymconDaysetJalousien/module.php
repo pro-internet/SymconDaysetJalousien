@@ -204,7 +204,8 @@ if (\$IPS_SENDER == \"WebFront\")
 		if(@IPS_GetObjectIDByIdent($ident, $parentID) === false)
 		{
 			$varID = IPS_CreateVariable($type);
-			SetValue($varID, $initVal);
+			if($initVal != 0)
+				SetValue($varID, $initVal);
 		}
 		else
 		{
@@ -443,7 +444,7 @@ if (\$IPS_SENDER == \"WebFront\")
 				IPS_DeleteVariable($vid);
 			}
 			//Global Räume Selector		
-			$vid = $this->CreateVariable(1, "Globale Räume" , "GlobalRaeume", $globalIns, 1 /*pos*/, 0 /*init Value*/, "DSJal.Selector", "SetValue");
+			$vid = $this->CreateVariable(1, "Globale Räume" , "GlobalRaeume", $globalIns, 1 /*pos*/, 0 /*init Value */, "DSJal.Selector", "SetValue");
 			//Global Räume Event	
 			$eid = $this->CreateEvent("GlobRäume" . "OnChange", "GlobalRaeume" . "onchange", $EventCatID, 0, 0, $vid, "DSJal_refresh(" . $this->InstanceID . "," . $vid . ");");
 			
