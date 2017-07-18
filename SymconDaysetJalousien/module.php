@@ -353,7 +353,7 @@ if (\$IPS_SENDER == \"WebFront\")
 			$this->CreateWindProfile($type);
 			
 			IPS_SetIcon($this->InstanceID, "Jalousie");
-			IPS_SetName($this->InstanceID, "Jalousie");
+			IPS_SetName($this->InstanceID, "Steuerung");
 			
 			//Create Automatin Dummy Module
 			$dummyGUID = $this->GetModuleIDByName("Dummy Module");
