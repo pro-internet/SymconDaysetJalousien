@@ -411,16 +411,16 @@ if (\$IPS_SENDER == \"WebFront\")
 				
 			//Create Objects for "Werte"
 			$insID = $cidEinstellungen;
-			$idJalousie = $this->CreateInstance($this->dummyGUID, "Jalousie", "JalousieIns", $insID, 30);
+			$idJalousie = $this->CreateInstance($this->dummyGUID, "Jalousie", "JalousieIns", $insID, 1130);
 			$this->CreateVariable(0, "Auf", "OffenVar", $idJalousie, 0, true, "~Switch", "SetValue");
 			$this->CreateVariable(0, "Zu", "GeschlossenVar", $idJalousie, 1, false, "~Switch", "SetValue");
-			$idAusblick = $this->CreateInstance($this->dummyGUID, "Ausblick", "AusblickIns", $insID, 31);
+			$idAusblick = $this->CreateInstance($this->dummyGUID, "Ausblick", "AusblickIns", $insID, 1131);
 			$this->CreateVariable(1, "Behang", "AusblickBehangVar", $idAusblick, 3, 0, "~Shutter", "SetValue");
 			$this->CreateVariable(1, "Lamellen", "AusblickLamellenVar", $idAusblick, 4, 0, "~Shutter", "SetValue");
-			$idBeschattung = $this->CreateInstance($this->dummyGUID, "Beschattung", "BeschattungIns", $insID, 32);
+			$idBeschattung = $this->CreateInstance($this->dummyGUID, "Beschattung", "BeschattungIns", $insID, 1132);
 			$this->CreateVariable(1, "Behang", "BeschattungBehangVar", $idBeschattung, 6, 0, "~Shutter", "SetValue");
 			$this->CreateVariable(1, "Lamellen", "BeschattungLamellenVar", $idBeschattung, 7, 0, "~Shutter", "SetValue");
-			$idSonnenschutz = $this->CreateInstance($this->dummyGUID, "Sonnenschutz", "SonnenschutzIns", $insID, 33);
+			$idSonnenschutz = $this->CreateInstance($this->dummyGUID, "Sonnenschutz", "SonnenschutzIns", $insID, 1133);
 			$this->CreateVariable(1, "Behang", "SonnenschutzBehangVar", $idSonnenschutz, 9, 0, "~Shutter", "SetValue");
 			$this->CreateVariable(1, "Lamellen", "SonnenschutzLamellenVar", $idSonnenschutz, 10, 0, "~Shutter", "SetValue");
 			
@@ -568,25 +568,95 @@ if (\$IPS_SENDER == \"WebFront\")
 		}
 	}
 	
-	private function stopAktor($targetFolder)
+	private function stopAktor($targetFolder, $target)
 	{
 		$allTargetsFolder = IPS_GetParent($targetFolder);
 		$stepStopFolder = IPS_GetObjectIDByIdent("StepStop", $allTargetsFolder);
-		$stepStopLink = IPS_GetChildrenIDs($stepStopFolder)[0];
-		$stepStopID = IPS_GetLink($stepStopLink)['TargetID'];
-		if(IPS_HasChildren($stepStopID))
+		$targetInstance = IPS_GetParent($target);
+		$targetConfigGA3 = json_decode(IPS_GetConfiguration($targetInstance), true)['GroupAddress3'];
+		$stepStopTargetID = 0;
+		$stepStopTargetLink = 0;
+		foreach(IPS_GetChildrenIDs($stepStopFolder) as $stepStopLink)
 		{
-			$stepStopID = IPS_GetChildrenIDs($stepStopID)[0];
+			$stepStopID = IPS_GetLink($stepStopLink)['TargetID'];
+			$stepStopIns = IPS_GetParent($stepStopID);
+			$stepStopConfigGA3 = json_decode(IPS_GetConfiguration($stepStopIns), true)['GroupAddress3'];
+			if($targetConfigGA3 == $stepStopConfigGA3)
+			{
+				$stepStopTargetID = $stepStopID;
+				$stepStopTargetLink = $stepStopLink;
+			}
 		}
-		$currentValue = GetValue($stepStopID);
+		$currentValue = GetValue($stepStopTargetID);
 		if($currentValue == true)
 			$nextValue = false;
 		else
 			$nextValue = true;
 		print_r($nextValue);
-		$this->Set("$stepStopFolder" . 'StepStop' , $nextValue);
+		//stop current action of aktor
+		$this->SetSingleDevice($stepStopTargetLink, $nextValue);
 	}
-
+	
+	private function SetSingleDevice($target, $value)
+	{
+		if(IPS_LinkExists($target)) //only allow links
+		{
+			$target = IPS_GetLink($target)['TargetID'];
+			if(IPS_InstanceExists($target))
+			{
+				$insID = $target;
+				$target = @IPS_GetChildrenIDs($target)[0];
+			}
+			if (IPS_VariableExists($target))
+			{
+				$o = IPS_GetObject($target);
+				$v = IPS_GetVariable($target);
+				$currentValue = GetValue($target);
+				if(gettype($value) == "boolean" || $currentValue != $value)
+				{	
+					$switchValue = true;
+				}
+				else
+				{
+					$switchValue = false;
+				}
+				
+				if($switchValue)
+				{
+					if($v['VariableCustomAction'] > 0)
+						$actionID = $v['VariableCustomAction'];
+					else
+						$actionID = $v['VariableAction'];
+					
+					//try changing the value by device-specific commands
+					if($actionID < 10000)
+					{
+						if(@$insID != NULL)
+							$this->SetValueByDevice($insID, $value);
+						else
+							SetValue($target, $value);
+						//Skip this device if we do not have a proper id
+						continue;
+					}
+						
+					if(IPS_InstanceExists($actionID)) {
+						IPS_RequestAction($actionID, $o['ObjectIdent'], $value);
+					} else if(IPS_ScriptExists($actionID)) {
+						echo IPS_RunScriptWaitEx($actionID, Array("VARIABLE" => $id, "VALUE" => $value, "SENDER" => "WebFront"));
+					}	
+				}
+			}
+			else
+			{
+				SetValueByDevice($insID, $value);
+			}
+		}
+		else
+		{
+			throw new Exception('Only Links as Targets allowed');
+		}
+	}
+	
 	private function Set($targetFolder, $value)
 	{
 		$stepStop = false;
@@ -624,7 +694,7 @@ if (\$IPS_SENDER == \"WebFront\")
 					{
 						//Stop the current Action of the Actor
 						if($stepStop == false)
-							$this->stopAktor($targetFolder);
+							$this->stopAktor($targetFolder, $target);
 
 						if($v['VariableCustomAction'] > 0)
 							$actionID = $v['VariableCustomAction'];
