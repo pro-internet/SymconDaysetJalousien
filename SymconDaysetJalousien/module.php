@@ -495,18 +495,21 @@ if (\$IPS_SENDER == \"WebFront\")
 		$allTargetsFolder = IPS_GetParent($targetFolder);
 		$stepStopFolder = IPS_GetObjectIDByIdent("StepStop", $allTargetsFolder);
 		$stepStopLink = IPS_GetChildrenIDs($stepStopFolder)[0];
-		$stepStopID = IPS_GetLink($stepStopLink)['TargetID'];
-		if(IPS_HasChildren($stepStopID))
+		if(sizeof($stepStopLink > 0))
 		{
-			$stepStopID = IPS_GetChildrenIDs($stepStopID)[0];
-		}
-		$currentValue = GetValue($stepStopID);
-		if($currentValue == true)
-			$nextValue = false;
-		else
-			$nextValue = true;
-		print_r($nextValue);
-		$this->Set("$stepStopFolder" . 'StepStop' , $nextValue);
+			$stepStopID = IPS_GetLink($stepStopLink)['TargetID'];
+			if(IPS_HasChildren($stepStopID))
+			{
+				$stepStopID = IPS_GetChildrenIDs($stepStopID)[0];
+			}
+			$currentValue = GetValue($stepStopID);
+			if($currentValue == true)
+				$nextValue = false;
+			else
+				$nextValue = true;
+			print_r($nextValue);
+			$this->Set("$stepStopFolder" . 'StepStop' , $nextValue);
+		}	
 	}
 
 	private function Set($targetFolder, $value)
